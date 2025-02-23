@@ -21,24 +21,7 @@ poll_busy_gather(CPUBusyInfo *cpu)
     last_tsc = current_tsc;
 }
 
-static inline void __attribute__((always_inline))
-poll_busy_gather(CPUBusyInfo *cpu)
-{
-    uint64_t current_tsc = rte_rdtsc();
-    static __thread uint64_t last_tsc = 0;
-
-    if (cpu->tls_cpu_n_pkts) {
-        cpu->pkt_total += cpu->tls_cpu_n_pkts;
-        cpu->process_times++;
-        cpu->process_tsc_total += current_tsc - last_tsc;
-
-        cpu->tls_cpu_n_pkts = 0;
-    }
-
-    last_tsc = current_tsc;
-}
-
-static void _pollload_gather_cb(CPUWorker *worker)
+static void __pollload_gather_cb(CPUWorker *worker)
 {
     CPUBusyInfo *cpu = &worker->busy_info;
     const uint32_t pkt_total            = cpu->pkt_total;
@@ -59,12 +42,8 @@ static void _pollload_gather_cb(CPUWorker *worker)
         worker->windows[worker->cur_window].total = 0;
     }
 
-    if (unlikely(worker->windows[worker->cur_window].busy > worker->windows[worker->cur_window].total))
-    {
-        worker->windows[worker->cur_window].busy = 0;
-    }
-
-    if (++worker->cur_window >= CPULOAD_MAX_WINDOWS) {
+    worker->cur_window++;
+    if (worker->cur_window >= CPULOAD_MAX_WINDOWS) {
         worker->cur_window = 0;
     }
 
